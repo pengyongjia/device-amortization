@@ -1,0 +1,11 @@
+# 依赖
+node_modules
+
+# 本地配置（含密钥）
+.env
+
+# SQLite 数据文件
+data/
+
+# 邮件发送的临时正文文件
+.mail-tmp-*

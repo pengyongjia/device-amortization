@@ -1,0 +1,26 @@
+{
+  "name": "device-amortization-server",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "设备摊销管家后端：邮箱魔法链接登录 + 设备数据云同步（本地优先架构）",
+  "license": "MIT",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/node": "^22.20.3",
+    "@types/nodemailer": "^8.0.2",
+    "tsx": "^4.23.13",
+    "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.1.1",
+    "@tencent-qqmail/agently-cli": "^1.0.18",
+    "better-sqlite3": "^11.10.0",
+    "hono": "^4.13.8",
+    "nodemailer": "^10.0.10"
+  }
+}
