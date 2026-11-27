@@ -202,12 +202,14 @@ export interface LoanRecord {
   id: string;
   /** 名称，如「房贷」「特斯拉车贷」「花呗分期」 */
   name: string;
-  /** 贷款本金（元）。mode=existing 时为「当前剩余本金」 */
+  /** 贷款本金（合同金额）。存量模式下填原始合同金额 */
   principal: number;
   /** 新贷款 / 存量贷款 */
   mode: LoanMode;
-  /** 存量贷款：已还期数（仅用于进度展示，不参与利息与本金摊还计算） */
+  /** 存量贷款：已还期数（应用从下一期继续推算） */
   paidPeriods?: number;
+  /** 存量贷款：当前剩余本金（可选，填银行 App 的贷款余额；不填则按已还期数推算） */
+  remainingPrincipal?: number;
   /** 还款方式 */
   method: RepayMethod;
   /** 利率口径 */
@@ -216,9 +218,9 @@ export interface LoanRecord {
   rateValue: number;
   /** 还款间隔 */
   interval: RepayInterval;
-  /** 总期数。mode=existing 时为「剩余期数」 */
+  /** 总期数（存量模式同样填合同总期数） */
   periods: number;
-  /** 首期还款日 / 存量贷款的下一期还款日 YYYY-MM-DD */
+  /** 首期还款日（存量模式填原始首期；应用会据此推进） */
   firstPaymentDate: string;
   /** 备注 */
   note: string;

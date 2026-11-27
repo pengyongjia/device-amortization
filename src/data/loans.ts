@@ -33,12 +33,19 @@ export function normalizeLoanRecord(raw: Record<string, unknown>): LoanRecord | 
     ? (raw.interval as RepayInterval)
     : 'month';
 
-  // 存量贷款：本金语义为「当前剩余本金」，期数为「剩余期数」，已还期数仅用于进度
+  // 存量贷款：本金为合同金额，已还期数用于推进到下一期；余额可选，用于修正提前还款
   const mode: LoanMode = raw.mode === 'existing' ? 'existing' : 'new';
   const priorPaid =
     mode === 'existing'
-      ? Math.min(1200, Math.max(0, Math.floor(Number(raw.paidPeriods) || 0)))
+      ? Math.min(Math.max(0, periods - 1), Math.max(0, Math.floor(Number(raw.paidPeriods) || 0)))
       : 0;
+  const declaredRemaining = Number(raw.remainingPrincipal);
+  const remainingPrincipal =
+    mode === 'existing' &&
+    declaredRemaining > 0 &&
+    (priorPaid === 0 || declaredRemaining < principal)
+      ? declaredRemaining
+      : undefined;
 
   return {
     id: typeof raw.id === 'string' && raw.id ? raw.id : uid(),
@@ -46,6 +53,7 @@ export function normalizeLoanRecord(raw: Record<string, unknown>): LoanRecord | 
     principal,
     mode,
     paidPeriods: mode === 'existing' ? priorPaid : undefined,
+    remainingPrincipal,
     method,
     rateUnit,
     rateValue: Math.max(0, Number(raw.rateValue) || 0),

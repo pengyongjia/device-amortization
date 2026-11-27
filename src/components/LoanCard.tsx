@@ -36,7 +36,9 @@ export function LoanCard({ loan, schedule, onEdit, onDelete }: LoanCardProps) {
                 <span>{INTERVAL_LABEL[loan.interval]}</span>
                 <span className="h-2.5 w-px bg-line" />
                 <span>
-                  {loan.mode === 'existing' ? `剩余 ${loan.periods} 期` : `${loan.periods} 期`}
+                  {loan.mode === 'existing'
+                    ? `剩余 ${Math.max(0, schedule.totalPeriods - schedule.totalPaidPeriods)} 期`
+                    : `${loan.periods} 期`}
                 </span>
               </div>
             </div>
@@ -138,7 +140,7 @@ export function LoanCard({ loan, schedule, onEdit, onDelete }: LoanCardProps) {
         onClick={() => setExpanded((v) => !v)}
         className="flex w-full cursor-pointer items-center justify-center gap-1.5 border-t border-line py-2.5 text-[12px] font-medium text-ink-3 transition-colors hover:bg-muted hover:text-ink"
       >
-        {expanded ? '收起还款计划' : `查看还款计划（${loan.mode === 'existing' ? '剩余 ' : ''}${loan.periods} 期）`}
+        {expanded ? '收起还款计划' : `查看还款计划（${schedule.installments.length} 期）`}
         <Icon
           name="chevron-down"
           size={14}
@@ -165,7 +167,7 @@ export function LoanCard({ loan, schedule, onEdit, onDelete }: LoanCardProps) {
                   className={`border-t border-line-2 ${it.due ? 'text-ink-2' : 'text-ink-4'}`}
                 >
                   <td className="px-4 py-1.5">
-                    {it.index + (loan.paidPeriods ?? 0)}
+                    {it.index}
                     {it.due && <span className="ml-1 text-[9px] text-green">已还</span>}
                   </td>
                   <td className="px-2 py-1.5">{it.date.slice(0, 7)}</td>

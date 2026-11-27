@@ -76,8 +76,30 @@ function annuityPayment(principal: number, rate: number, periods: number): numbe
  * total 利率口径（固定手续费）：把总利息平均摊到每一期，本金按等额本金归还。
  */
 export function calcLoanSchedule(loan: LoanRecord, today: Date = todayStart()): LoanSchedule {
-  const principal = Math.max(0, Number(loan.principal) || 0);
-  const periods = Math.max(1, Math.floor(Number(loan.periods) || 1));
+  const contractPrincipal = Math.max(0, Number(loan.principal) || 0);
+  const contractPeriods = Math.max(1, Math.floor(Number(loan.periods) || 1));
+  const isExisting = loan.mode === 'existing';
+
+  // 存量贷款：已还期数决定「从第几期继续算」，下一期 = 已还数 + 1
+  const priorPaid = isExisting
+    ? Math.min(contractPeriods - 1, Math.max(0, Math.floor(Number(loan.paidPeriods) || 0)))
+    : 0;
+  // 本次要生成的期数：存量贷款只生成剩余部分
+  const periods = isExisting ? contractPeriods - priorPaid : contractPeriods;
+
+  // 起算本金：优先用银行 App 的当前余额；没填则按已还比例从合同金额推算。
+  // 已还过款时，余额必然小于合同本金——若填成合同金额（常见误填），忽略它并走推算。
+  const declaredRemaining = Number(loan.remainingPrincipal);
+  const useDeclared =
+    isExisting &&
+    declaredRemaining > 0 &&
+    (priorPaid === 0 || declaredRemaining < contractPrincipal);
+  const principal = isExisting
+    ? useDeclared
+      ? declaredRemaining
+      : contractPrincipal * (1 - priorPaid / contractPeriods)
+    : contractPrincipal;
+
   const interval = loan.interval;
   const monthlyRate = toMonthlyRate(loan.rateUnit, loan.rateValue);
   const r = periodRate(monthlyRate, interval);
@@ -130,7 +152,7 @@ export function calcLoanSchedule(loan: LoanRecord, today: Date = todayStart()): 
     totalInterest += interest;
 
     installments.push({
-      index: i + 1,
+      index: priorPaid + i + 1,
       date: toDateStr(date),
       payment: round2(payment),
       principal: round2(principalPart),
@@ -160,9 +182,8 @@ export function calcLoanSchedule(loan: LoanRecord, today: Date = todayStart()): 
   // 下一期（当期）应还：等额本息时与首期相同，等额本金时逐月递减
   const periodPayment = next?.payment ?? lastPayment;
 
-  // 存量贷款：已还期数只影响进度与总期数，不参与利息/本金摊还
-  const priorPaid = Math.max(0, Math.floor(Number(loan.paidPeriods) || 0));
-  const totalPeriods = priorPaid + periods;
+  // 总期数：存量贷款仍按合同总期数计，进度用「已还 + 计划内到期」除以它
+  const totalPeriods = contractPeriods;
   const totalPaidPeriods = Math.min(totalPeriods, priorPaid + paidPeriods);
 
   // "每月需还"用 本息合计 ÷ 总月数 折算平均值。

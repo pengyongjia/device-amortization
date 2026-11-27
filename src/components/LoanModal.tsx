@@ -39,6 +39,7 @@ const emptyForm = (): FormState => ({
   principal: 0,
   mode: 'new',
   paidPeriods: 0,
+  remainingPrincipal: undefined,
   method: 'equal_installment',
   rateUnit: 'year',
   rateValue: 0,
@@ -69,6 +70,7 @@ export function LoanModal({ open, loan, onClose, onSubmit }: LoanModalProps) {
           principal: loan.principal,
           mode: loan.mode,
           paidPeriods: loan.paidPeriods ?? 0,
+          remainingPrincipal: loan.remainingPrincipal,
           method: loan.method,
           rateUnit: loan.rateUnit,
           rateValue: loan.rateValue,
@@ -173,22 +175,21 @@ export function LoanModal({ open, loan, onClose, onSubmit }: LoanModalProps) {
               </div>
               <p className="text-[11px] leading-relaxed text-ink-4">
                 {isExisting
-                  ? '已在还的贷款：填银行 App 的「当前剩余本金」和「剩余期数」，算出来就是真实的下一期月供'
+                  ? '填合同本金 + 总期数 + 已还期数，应用自动从下一期开始算；若提前还款过，再填「当前剩余本金」修正'
                   : '新办的贷款：填合同上的贷款金额与总期数，从首期开始推算'}
               </p>
             </div>
 
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="l-principal">
-                {isExisting ? '当前剩余本金 (¥)' : '贷款本金 (¥)'}{' '}
-                <b className="font-normal text-red">*</b>
+                贷款本金（合同金额） <b className="font-normal text-red">*</b>
               </Label>
               <Input
                 id="l-principal"
                 type="number"
                 min={0}
                 step={100}
-                placeholder={isExisting ? '如：426466.85' : '如：1000000'}
+                placeholder="如：500000"
                 value={form.principal || ''}
                 onChange={(e) => set('principal', Number(e.target.value) || 0)}
               />
@@ -196,42 +197,71 @@ export function LoanModal({ open, loan, onClose, onSubmit }: LoanModalProps) {
 
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="l-periods">
-                {isExisting ? '剩余期数' : '总期数'} <b className="font-normal text-red">*</b>
+                总期数 <b className="font-normal text-red">*</b>
               </Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  id="l-periods"
-                  type="number"
-                  min={1}
-                  max={600}
-                  step={1}
-                  className="min-w-0 flex-1"
-                  placeholder={isExisting ? '如：214' : '如：360'}
-                  value={form.periods || ''}
-                  onChange={(e) => set('periods', Math.floor(Number(e.target.value) || 0))}
-                />
-                {isExisting && (
-                  <>
-                    <span className="shrink-0 text-[11.5px] text-ink-4">已还</span>
-                    <Input
-                      id="l-paid"
-                      type="number"
-                      min={0}
-                      max={1200}
-                      step={1}
-                      className="w-[68px] shrink-0 px-2 text-center"
-                      placeholder="25"
-                      title="已还期数（仅用于显示进度，不参与利息计算）"
-                      value={form.paidPeriods || ''}
-                      onChange={(e) =>
-                        set('paidPeriods', Math.max(0, Math.floor(Number(e.target.value) || 0)))
-                      }
-                    />
-                    <span className="shrink-0 text-[11.5px] text-ink-4">期</span>
-                  </>
-                )}
-              </div>
+              <Input
+                id="l-periods"
+                type="number"
+                min={1}
+                max={600}
+                step={1}
+                placeholder="如：240"
+                value={form.periods || ''}
+                onChange={(e) => set('periods', Math.floor(Number(e.target.value) || 0))}
+              />
             </div>
+
+            {isExisting && (
+              <>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="l-paid">
+                    已还期数 <b className="font-normal text-red">*</b>
+                  </Label>
+                  <Input
+                    id="l-paid"
+                    type="number"
+                    min={0}
+                    max={Math.max(0, form.periods - 1)}
+                    step={1}
+                    placeholder="如：26"
+                    value={form.paidPeriods || ''}
+                    onChange={(e) =>
+                      set('paidPeriods', Math.max(0, Math.floor(Number(e.target.value) || 0)))
+                    }
+                  />
+                  <p className="text-[11px] text-ink-4">
+                    应用会从第 {(form.paidPeriods || 0) + 1} 期开始算
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="l-remaining">当前剩余本金（可选）</Label>
+                  <Input
+                    id="l-remaining"
+                    type="number"
+                    min={0}
+                    step={100}
+                    placeholder="银行 App 的「贷款余额」"
+                    value={form.remainingPrincipal ?? ''}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      set('remainingPrincipal', v === '' ? undefined : Number(v) || 0);
+                    }}
+                  />
+                  <p className="text-[11px] text-ink-4">
+                    {form.remainingPrincipal !== undefined &&
+                    form.remainingPrincipal >= form.principal &&
+                    (form.paidPeriods || 0) > 0 ? (
+                      <span className="text-red">
+                        这看起来是合同金额，请填银行 App 的「贷款余额」
+                      </span>
+                    ) : (
+                      '提前还款过就填；不填则按已还期数推算'
+                    )}
+                  </p>
+                </div>
+              </>
+            )}
 
             <div className="flex flex-col gap-1.5 sm:col-span-2">
               <Label>还款方式</Label>
@@ -339,7 +369,8 @@ export function LoanModal({ open, loan, onClose, onSubmit }: LoanModalProps) {
             {preview && (
               <div className="rounded-lg border border-line bg-muted/60 px-3.5 py-3 sm:col-span-2">
                 <div className="mb-2 text-[11.5px] font-medium text-ink-3">
-                  预览{isExisting ? '（从下一期起算）' : ''}
+                  预览
+                  {isExisting ? `（第 ${(form.paidPeriods || 0) + 1} 期起）` : ''}
                 </div>
                 <div className="grid grid-cols-3 gap-2 text-center tabular-nums">
                   <div>
