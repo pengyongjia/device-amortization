@@ -236,6 +236,8 @@ export interface AdminUserRow {
   lastLoginAt: number;
   /** 云端设备条数；从未同步过为 null */
   syncedDevices: number | null;
+  /** 云端贷款条数；旧版数据无贷款时为 0 */
+  syncedLoans: number | null;
   /** 云端数据最后更新时间 */
   syncedAt: number | null;
   revision: number | null;
@@ -268,20 +270,35 @@ export function getAdminStats(): AdminStats {
 
   const users: AdminUserRow[] = rows.map((u) => {
     const doc = selSync.get(u.id);
-    let count: number | null = null;
+    let deviceCount: number | null = null;
+    let loanCount: number | null = null;
     if (doc) {
       try {
         const parsed = JSON.parse(doc.data) as unknown;
-        count = Array.isArray(parsed) ? parsed.length : 0;
+        if (Array.isArray(parsed)) {
+          // v1：云端只存设备数组
+          deviceCount = parsed.length;
+          loanCount = 0;
+        } else if (parsed && typeof parsed === 'object') {
+          // v2：{ version, devices, loans }
+          const obj = parsed as { devices?: unknown; loans?: unknown };
+          deviceCount = Array.isArray(obj.devices) ? obj.devices.length : 0;
+          loanCount = Array.isArray(obj.loans) ? obj.loans.length : 0;
+        } else {
+          deviceCount = 0;
+          loanCount = 0;
+        }
       } catch {
-        count = -1; // 数据不是合法 JSON，标记异常
+        deviceCount = -1; // 数据不是合法 JSON，标记异常
+        loanCount = -1;
       }
     }
     return {
       email: u.email,
       createdAt: u.created_at,
       lastLoginAt: u.last_login_at,
-      syncedDevices: count,
+      syncedDevices: deviceCount,
+      syncedLoans: loanCount,
       syncedAt: doc ? doc.updated_at : null,
       revision: doc ? doc.revision : null,
     };

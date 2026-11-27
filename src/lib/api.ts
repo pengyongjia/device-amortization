@@ -1,4 +1,4 @@
-import type { Device } from '../types';
+import type { Device, SyncPayload } from '../types';
 
 /**
  * 后端 API client。地址解析优先级：
@@ -86,7 +86,8 @@ export interface AuthUser {
 }
 
 export interface SyncDoc {
-  data: Device[] | null;
+  /** v2 为 { version, devices, loans }；早期版本为 Device[] 数组 */
+  data: unknown;
   updatedAt: number | null;
   revision: number;
 }
@@ -133,7 +134,7 @@ export const api = {
   pull: (token: string) => request<SyncDoc>('/api/sync', { token }),
 
   /** 上传数据（baseUpdatedAt 用于冲突检测；传 null 表示强制覆盖） */
-  push: (token: string, data: Device[], baseUpdatedAt: number | null) =>
+  push: (token: string, data: SyncPayload | Device[], baseUpdatedAt: number | null) =>
     request<{ ok: boolean; updatedAt: number; revision: number }>('/api/sync', {
       method: 'PUT',
       token,

@@ -227,6 +227,13 @@ export interface LoanRecord {
   createdAt: number;
 }
 
+/** 云同步载荷（v2：设备 + 贷款一起同步） */
+export interface SyncPayload {
+  version: 2;
+  devices: Device[];
+  loans: LoanRecord[];
+}
+
 /** 单期还款明细 */
 export interface RepayInstallment {
   /** 第几期（从 1 开始） */

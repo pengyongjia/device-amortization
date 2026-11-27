@@ -42,7 +42,9 @@ export function ConflictDialog({ conflict, syncing, onResolve, onDismiss }: Conf
           >
             <Icon name="laptop" size={22} className="text-ink-2" />
             <span className="mt-1 text-[13.5px] font-semibold text-ink">保留本地数据</span>
-            <span className="text-xs text-ink-4">本机 {conflict?.localCount ?? 0} 台设备</span>
+            <span className="text-xs text-ink-4">
+              本机 {conflict?.localDevices ?? 0} 台设备 · {conflict?.localLoans ?? 0} 笔贷款
+            </span>
             <span className="text-[11px] text-amber">将覆盖云端</span>
           </button>
 
@@ -54,7 +56,10 @@ export function ConflictDialog({ conflict, syncing, onResolve, onDismiss }: Conf
           >
             <Icon name="cloud" size={22} className="text-ink-2" />
             <span className="mt-1 text-[13.5px] font-semibold text-ink">使用云端数据</span>
-            <span className="text-xs text-ink-4">云端 {conflict?.serverDevices.length ?? 0} 台设备</span>
+            <span className="text-xs text-ink-4">
+              云端 {conflict?.serverDevices.length ?? 0} 台设备 · {conflict?.serverLoans.length ?? 0}{' '}
+              笔贷款
+            </span>
             <span className="text-[11px] text-amber">将覆盖本机</span>
           </button>
         </div>

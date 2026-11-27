@@ -30,7 +30,7 @@ export default function App() {
   const [slimming, setSlimming] = useState(false);
   const today = useToday();
   const toast = useToast();
-  const sync = useSync(devices, setDevices);
+  const sync = useSync(devices, setDevices, loans, setLoans);
   const [syncOpen, setSyncOpen] = useState(false);
 
   // 首次使用（无任何设备）时直接进入带引导的设备列表页

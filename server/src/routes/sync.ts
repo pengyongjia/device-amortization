@@ -24,8 +24,12 @@ syncRoutes.put('/', requireAuth, async (c) => {
     data?: unknown;
     baseUpdatedAt?: unknown;
   } | null;
-  if (!body || !Array.isArray(body.data)) {
-    return c.json({ error: 'bad_data', message: '数据格式不正确（需要 { data: [...] }）' }, 400);
+  // 兼容两种载荷：v2 对象 { version, devices, loans } 与早期 Device[] 数组
+  const isValidData =
+    !!body &&
+    (Array.isArray(body.data) || (typeof body.data === 'object' && body.data !== null));
+  if (!isValidData) {
+    return c.json({ error: 'bad_data', message: '数据格式不正确' }, 400);
   }
 
   const baseUpdatedAt = typeof body.baseUpdatedAt === 'number' ? body.baseUpdatedAt : null;
