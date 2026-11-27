@@ -1,4 +1,4 @@
-import type { LoanRecord, RateUnit, RepayInterval, RepayMethod } from '../types';
+import type { LoanMode, LoanRecord, RateUnit, RepayInterval, RepayMethod } from '../types';
 import { STORAGE_KEY_LOANS } from '../constants';
 import { uid } from './storage';
 import { todayStr } from '../utils/date';
@@ -33,10 +33,19 @@ export function normalizeLoanRecord(raw: Record<string, unknown>): LoanRecord | 
     ? (raw.interval as RepayInterval)
     : 'month';
 
+  // 存量贷款：本金语义为「当前剩余本金」，期数为「剩余期数」，已还期数仅用于进度
+  const mode: LoanMode = raw.mode === 'existing' ? 'existing' : 'new';
+  const priorPaid =
+    mode === 'existing'
+      ? Math.min(1200, Math.max(0, Math.floor(Number(raw.paidPeriods) || 0)))
+      : 0;
+
   return {
     id: typeof raw.id === 'string' && raw.id ? raw.id : uid(),
     name: String(raw.name ?? '未命名贷款').slice(0, 40),
     principal,
+    mode,
+    paidPeriods: mode === 'existing' ? priorPaid : undefined,
     method,
     rateUnit,
     rateValue: Math.max(0, Number(raw.rateValue) || 0),

@@ -54,6 +54,15 @@ export default function App() {
     [devices, today],
   );
 
+  // 应用首帧渲染完成后淡出启动屏（#boot-splash 定义在 index.html，随 HTML 首字节即显示）
+  useEffect(() => {
+    const splash = document.getElementById('boot-splash');
+    if (!splash) return;
+    splash.classList.add('boot-hide');
+    const timer = window.setTimeout(() => splash.remove(), 320);
+    return () => window.clearTimeout(timer);
+  }, []);
+
   // 跨日提示
   const prevDayRef = useRef(today.getTime());
   useEffect(() => {

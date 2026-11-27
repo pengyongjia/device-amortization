@@ -31,7 +31,7 @@ export function LoansDashboard({
         <div className="relative flex flex-wrap items-end justify-between gap-x-10 gap-y-6">
           <div className="min-w-[240px]">
             <div className="text-[12.5px] font-medium text-white/55">
-              每月需还合计
+              每月需还（本期）
               <span className="ml-2 text-white/35">· {summary.activeCount} 笔进行中</span>
             </div>
             <div className="mt-2.5 text-[42px] leading-none font-semibold tracking-[-0.03em] tabular-nums sm:text-[48px]">

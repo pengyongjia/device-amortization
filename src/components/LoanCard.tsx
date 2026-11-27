@@ -35,7 +35,9 @@ export function LoanCard({ loan, schedule, onEdit, onDelete }: LoanCardProps) {
                 <span className="h-2.5 w-px bg-line" />
                 <span>{INTERVAL_LABEL[loan.interval]}</span>
                 <span className="h-2.5 w-px bg-line" />
-                <span>{loan.periods} 期</span>
+                <span>
+                  {loan.mode === 'existing' ? `剩余 ${loan.periods} 期` : `${loan.periods} 期`}
+                </span>
               </div>
             </div>
           </div>
@@ -57,14 +59,31 @@ export function LoanCard({ loan, schedule, onEdit, onDelete }: LoanCardProps) {
           </div>
         </div>
 
-        {/* 核心数字区：本期月供 / 累计已还 / 剩余本金 */}
+        {/* 核心数字区：当期应还 / 累计已还 / 剩余本金 */}
         <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-4">
           <Metric
-            label={schedule.settled ? '已结清' : '每月需还'}
-            value={fmtMoney(schedule.monthlyPayment)}
+            label={
+              schedule.settled
+                ? '已结清'
+                : loan.method === 'equal_principal'
+                  ? '本期应还'
+                  : loan.method === 'bullet'
+                    ? '到期应还'
+                    : loan.method === 'interest_first'
+                      ? '每期利息'
+                      : '每期月供'
+            }
+            value={fmtMoney(schedule.settled ? schedule.lastPayment : schedule.periodPayment)}
             accent
           />
-          <Metric label="累计已还" value={fmtMoney(schedule.paidAmount)} />
+          <Metric
+            label={loan.mode === 'existing' ? '已还本金(估算)' : '累计已还'}
+            value={fmtMoney(
+              loan.mode === 'existing'
+                ? (loan.principal / Math.max(1, loan.periods)) * (loan.paidPeriods ?? 0)
+                : schedule.paidAmount,
+            )}
+          />
           <Metric label="剩余本金" value={fmtMoney(schedule.remainingPrincipal)} />
         </div>
 
@@ -72,10 +91,12 @@ export function LoanCard({ loan, schedule, onEdit, onDelete }: LoanCardProps) {
         <div className="mt-4">
           <div className="mb-1.5 flex items-center justify-between text-[11.5px] text-ink-3">
             <span>
-              已还 {schedule.paidPeriods}/{loan.periods} 期
+              已还 {schedule.totalPaidPeriods}/{schedule.totalPeriods} 期
             </span>
             <span className="tabular-nums">
-              {schedule.settled ? '已结清' : `总利息 ${fmtMoney(schedule.totalInterest)}`}
+              {schedule.settled
+                ? '已结清'
+                : `${loan.mode === 'existing' ? '剩余利息' : '总利息'} ${fmtMoney(schedule.totalInterest)}`}
             </span>
           </div>
           <div className="h-1.5 overflow-hidden rounded-full bg-line-2">
@@ -91,7 +112,15 @@ export function LoanCard({ loan, schedule, onEdit, onDelete }: LoanCardProps) {
           <div className="mt-3 flex items-center gap-1.5 text-[11.5px] text-ink-3">
             <Icon name="calendar" size={13} />
             下期还款日 <b className="font-medium text-ink-2">{schedule.nextPaymentDate}</b>
-            <span className="text-ink-4">· 本期 {fmtMoney(schedule.periodPayment)}</span>
+            <span className="text-ink-4">· 应还 {fmtMoney(schedule.periodPayment)}</span>
+          </div>
+        )}
+
+        {/* 等额本金：明确月供逐月递减的区间，避免被误认为固定月供 */}
+        {loan.method === 'equal_principal' && !schedule.settled && (
+          <div className="mt-1.5 text-[11px] text-ink-4 tabular-nums">
+            等额本金逐月递减：首期 {fmtMoney(schedule.firstPayment)} → 末期{' '}
+            {fmtMoney(schedule.lastPayment)}
           </div>
         )}
 
@@ -109,7 +138,7 @@ export function LoanCard({ loan, schedule, onEdit, onDelete }: LoanCardProps) {
         onClick={() => setExpanded((v) => !v)}
         className="flex w-full cursor-pointer items-center justify-center gap-1.5 border-t border-line py-2.5 text-[12px] font-medium text-ink-3 transition-colors hover:bg-muted hover:text-ink"
       >
-        {expanded ? '收起还款计划' : `查看还款计划（${loan.periods} 期）`}
+        {expanded ? '收起还款计划' : `查看还款计划（${loan.mode === 'existing' ? '剩余 ' : ''}${loan.periods} 期）`}
         <Icon
           name="chevron-down"
           size={14}
@@ -136,7 +165,7 @@ export function LoanCard({ loan, schedule, onEdit, onDelete }: LoanCardProps) {
                   className={`border-t border-line-2 ${it.due ? 'text-ink-2' : 'text-ink-4'}`}
                 >
                   <td className="px-4 py-1.5">
-                    {it.index}
+                    {it.index + (loan.paidPeriods ?? 0)}
                     {it.due && <span className="ml-1 text-[9px] text-green">已还</span>}
                   </td>
                   <td className="px-2 py-1.5">{it.date.slice(0, 7)}</td>

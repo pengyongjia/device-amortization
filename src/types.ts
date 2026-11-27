@@ -194,13 +194,20 @@ export type RepayInterval =
   | 'year' // 年付（12）
   | 'biweek'; // 双周付（按 0.5 个月折算）
 
+/** 贷款录入状态：new = 新贷款（从首期开始）；existing = 存量贷款（已在还，从当前剩余本金起算） */
+export type LoanMode = 'new' | 'existing';
+
 /** 一笔贷款 / 分期记录 */
 export interface LoanRecord {
   id: string;
   /** 名称，如「房贷」「特斯拉车贷」「花呗分期」 */
   name: string;
-  /** 贷款本金（元） */
+  /** 贷款本金（元）。mode=existing 时为「当前剩余本金」 */
   principal: number;
+  /** 新贷款 / 存量贷款 */
+  mode: LoanMode;
+  /** 存量贷款：已还期数（仅用于进度展示，不参与利息与本金摊还计算） */
+  paidPeriods?: number;
   /** 还款方式 */
   method: RepayMethod;
   /** 利率口径 */
@@ -209,9 +216,9 @@ export interface LoanRecord {
   rateValue: number;
   /** 还款间隔 */
   interval: RepayInterval;
-  /** 总期数 */
+  /** 总期数。mode=existing 时为「剩余期数」 */
   periods: number;
-  /** 首期还款日 YYYY-MM-DD */
+  /** 首期还款日 / 存量贷款的下一期还款日 YYYY-MM-DD */
   firstPaymentDate: string;
   /** 备注 */
   note: string;
@@ -240,17 +247,27 @@ export interface RepayInstallment {
 export interface LoanSchedule {
   /** 换算后的月利率（小数，如 0.0042） */
   monthlyRate: number;
-  /** 每期应还（等额本息时固定；其余为首期值） */
+  /** 下一期应还金额（全部还清后为末期值） */
   periodPayment: number;
-  /** 折算成"每月需还"（按间隔归一，便于多笔汇总） */
+  /** 计划内首期应还（存量贷款即当前这一期） */
+  firstPayment: number;
+  /** 计划内末期应还（等额本金时最小） */
+  lastPayment: number;
+  /** 全程平均月供 = 本息合计 ÷ 总月数（多笔汇总用，不等于任何单期值） */
   monthlyPayment: number;
+  /** 当期折算月供 = 下一期应还 ÷ 每期月数（与卡片「本期应还」同口径，汇总用） */
+  currentMonthly: number;
   /** 总利息 */
   totalInterest: number;
   /** 本息合计 */
   totalPayment: number;
-  /** 已还期数 */
+  /** 计划内已到期期数 */
   paidPeriods: number;
-  /** 累计已还金额（本息） */
+  /** 含存量已还的总已还期数 */
+  totalPaidPeriods: number;
+  /** 含存量已还的总期数 */
+  totalPeriods: number;
+  /** 累计已还金额（本息，仅统计计划内到期部分） */
   paidAmount: number;
   /** 累计已还利息 */
   paidInterest: number;
@@ -258,7 +275,7 @@ export interface LoanSchedule {
   remainingPrincipal: number;
   /** 剩余待还（本息） */
   remainingAmount: number;
-  /** 还款进度 0~1 */
+  /** 还款进度 0~1（按总期数计） */
   progress: number;
   /** 下期还款日（已结清为 null） */
   nextPaymentDate: string | null;
@@ -270,7 +287,7 @@ export interface LoanSchedule {
 
 /** 全部贷款汇总 */
 export interface LoansSummary {
-  /** 每月需还合计 */
+  /** 每月需还合计（当期口径，与单张卡片的「本期应还」一致） */
   monthlyPayment: number;
   /** 待还本金合计 */
   remainingPrincipal: number;

@@ -154,7 +154,16 @@ export function calcLoanSchedule(loan: LoanRecord, today: Date = todayStart()): 
     sum(installments.filter((x) => !x.due).map((x) => x.payment)),
   );
   const next = installments.find((x) => !x.due);
-  const periodPayment = installments[0]?.payment ?? 0;
+  // 首期 / 末期应还：等额本金下两者差别很大，必须分开展示，不能用平均值糊弄
+  const firstPayment = installments[0]?.payment ?? 0;
+  const lastPayment = installments[periods - 1]?.payment ?? 0;
+  // 下一期（当期）应还：等额本息时与首期相同，等额本金时逐月递减
+  const periodPayment = next?.payment ?? lastPayment;
+
+  // 存量贷款：已还期数只影响进度与总期数，不参与利息/本金摊还
+  const priorPaid = Math.max(0, Math.floor(Number(loan.paidPeriods) || 0));
+  const totalPeriods = priorPaid + periods;
+  const totalPaidPeriods = Math.min(totalPeriods, priorPaid + paidPeriods);
 
   // "每月需还"用 本息合计 ÷ 总月数 折算平均值。
   // 不能用首期金额：先息后本末期还大额本金、一次性还本付息前期为 0，首期都不具代表性。
@@ -163,16 +172,23 @@ export function calcLoanSchedule(loan: LoanRecord, today: Date = todayStart()): 
 
   return {
     monthlyRate,
-    periodPayment,
+    periodPayment: round2(periodPayment),
+    firstPayment: round2(firstPayment),
+    lastPayment: round2(lastPayment),
     monthlyPayment: round2(monthlyPayment),
+    // 当期口径：与卡片显示的「本期应还」一致，避免汇总与单笔对不上
+    currentMonthly: round2(monthsPerPeriod > 0 ? periodPayment / monthsPerPeriod : periodPayment),
     totalInterest: round2(totalInterest),
     totalPayment: round2(principal + totalInterest),
     paidPeriods,
+    totalPaidPeriods,
+    totalPeriods,
     paidAmount: round2(paidAmount),
     paidInterest: round2(paidInterest),
     remainingPrincipal,
     remainingAmount,
-    progress: principal > 0 ? clamp01((principal - remainingPrincipal) / principal) : 1,
+    progress:
+      totalPeriods > 0 ? clamp01(totalPaidPeriods / totalPeriods) : 1,
     nextPaymentDate: next?.date ?? null,
     settled,
     installments,
@@ -193,7 +209,8 @@ export function summarizeLoans(
 
   schedules.forEach((s, i) => {
     if (!s.settled) {
-      monthlyPayment += s.monthlyPayment;
+      // 用「当期应还」口径，与单张卡片的「本期应还」保持一致
+      monthlyPayment += s.currentMonthly;
       remainingPrincipal += s.remainingPrincipal;
       activeCount += 1;
     }

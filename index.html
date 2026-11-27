@@ -17,9 +17,123 @@
   <meta name="apple-mobile-web-app-title" content="摊销管家">
   <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
   <meta name="format-detection" content="telephone=no">
+
+  <!-- 固定浅色配色：避免深色模式下 CSS 未加载时出现黑屏 -->
+  <meta name="color-scheme" content="light">
+  <meta name="supported-color-schemes" content="light">
+
+  <!-- 启动屏样式：内联在 HTML 里，不依赖任何外部资源，第一帧即可渲染 -->
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #f6f8fa;
+      color-scheme: light;
+    }
+    html { height: 100%; }
+    body { min-height: 100%; }
+
+    #boot-splash {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      background: #f6f8fa;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+        "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      transition: opacity .28s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #boot-splash.boot-hide {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .boot-logo {
+      display: grid;
+      place-items: center;
+      width: 52px;
+      height: 52px;
+      border-radius: 15px;
+      background: #0a2540;
+      color: #fff;
+      font-size: 25px;
+      font-weight: 600;
+      line-height: 1;
+      animation: boot-breathe 2s ease-in-out infinite;
+    }
+    .boot-title {
+      margin-top: 14px;
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      color: #0a2540;
+    }
+    .boot-sub {
+      margin-top: 5px;
+      font-size: 12px;
+      color: #9aa8ba;
+    }
+    .boot-bar {
+      margin-top: 22px;
+      width: 132px;
+      height: 3px;
+      border-radius: 99px;
+      background: #e5e9ef;
+      overflow: hidden;
+    }
+    .boot-bar i {
+      display: block;
+      width: 42%;
+      height: 100%;
+      border-radius: 99px;
+      background: #0a2540;
+      animation: boot-slide 1.15s ease-in-out infinite;
+    }
+    @keyframes boot-slide {
+      0% { transform: translateX(-105%); }
+      55%, 100% { transform: translateX(245%); }
+    }
+    @keyframes boot-breathe {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(.975); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .boot-logo, .boot-bar i { animation: none; }
+      .boot-bar i { width: 100%; }
+    }
+  </style>
 </head>
 <body>
+  <!-- 启动屏：React 挂载后由 App 淡出并移除 -->
+  <div id="boot-splash" role="status" aria-live="polite">
+    <div class="boot-logo">¥</div>
+    <div class="boot-title">设备摊销管家</div>
+    <div class="boot-sub">正在加载…</div>
+    <div class="boot-bar"><i></i></div>
+  </div>
+
   <div id="root"></div>
+
+  <noscript>
+    <div style="padding:32px 24px;text-align:center;color:#425466;font-size:14px;line-height:1.6">
+      这个应用需要启用 JavaScript 才能使用，请在浏览器设置中开启后刷新页面。
+    </div>
+  </noscript>
+
   <script type="module" src="/src/main.tsx"></script>
+
+  <!-- 兜底：加载超过 8 秒仍未就绪时，给出可操作的提示，避免一直"正在加载" -->
+  <script>
+    setTimeout(function () {
+      var s = document.getElementById('boot-splash');
+      if (!s || s.classList.contains('boot-hide')) return;
+      var sub = s.querySelector('.boot-sub');
+      if (sub) sub.textContent = '加载有点慢，请检查网络后刷新页面';
+    }, 8000);
+  </script>
 </body>
 </html>
